@@ -19,10 +19,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -136,7 +142,7 @@ public class MailMsgSender {
         return sendResult;
     }
 
-    private void getMailFiles(String files, List<File> mailFiles) throws IOException {
+    private void getMailFiles(String files, List<File> mailFiles) throws Exception {
         if(StringUtils.isNotEmpty(files)) {
             JSONObject jsonObject = JSONObject.parseObject(files);
             String filePath = jsonObject.getString("filePath");
@@ -154,6 +160,10 @@ public class MailMsgSender {
             FileOutputStream out = null;
             
             try {
+                // 如果是 HTTPS，自动信任所有证书
+                if ("https".equalsIgnoreCase(url.getProtocol())) {
+                    trustAllHttpsCertificates();
+                }
                 URLConnection urlConnection = url.openConnection();
                 httpURLConnection = (HttpURLConnection) urlConnection;
                 // 设置连接超时为30秒
@@ -201,6 +211,9 @@ public class MailMsgSender {
             } catch (IOException e) {
                 log.error("下载邮件附件失败，文件路径: {}, 错误信息: {}", filePath, e.getMessage(), e);
                 throw e;
+            } catch (Exception ex) {
+                log.error("下载邮件附件失败，文件路径: {}, 错误信息: {}", filePath, ex.getMessage(), ex);
+                throw ex;
             } finally {
                 // 确保资源被正确关闭
                 if (bin != null) {
@@ -222,6 +235,25 @@ public class MailMsgSender {
                 }
             }
         }
+    }
+
+    /**
+     * 统一支持 HTTP / HTTPS
+     * @throws Exception
+     */
+    private void trustAllHttpsCertificates() throws Exception {
+        TrustManager[] trustAllCerts = new TrustManager[]{
+                new X509TrustManager() {
+                    public X509Certificate[] getAcceptedIssuers() { return null; }
+                    public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+                    public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+                }
+        };
+
+        SSLContext sc = SSLContext.getInstance("TLS");
+        sc.init(null, trustAllCerts, new SecureRandom());
+        HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+        HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
     }
 
 
