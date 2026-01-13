@@ -120,14 +120,23 @@ function handleSuccess() {
 // 处理开始训练
 const handleStartTrain = async (config) => {
   try {
-    await startTrain(modelId.value, config).then((data) => {
-      createMessage.success(data['msg']);
-    });
-    isPollingActive.value = true;
-    startModalVisible.value = false;
-    reload();
+    const response = await startTrain(modelId.value, config);
+    // 检查响应是否成功
+    if (response && (response.code === 0 || response.success === true)) {
+      createMessage.success(response.msg || '训练已启动');
+      isPollingActive.value = true;
+      startModalVisible.value = false;
+      // 只有在成功时才刷新列表
+      reload();
+    } else {
+      // API 返回了错误响应，不刷新列表
+      createMessage.error(response?.msg || '启动训练失败');
+      console.error('启动训练失败:', response);
+    }
   } catch (error) {
-    createMessage.error('启动训练失败');
+    // API 调用异常，不刷新列表，避免显示失败的记录
+    const errorMsg = error?.response?.data?.msg || error?.message || '启动训练失败';
+    createMessage.error(errorMsg);
     console.error('启动训练失败:', error);
   }
 };

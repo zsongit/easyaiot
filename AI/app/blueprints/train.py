@@ -26,6 +26,8 @@ train_processes = {}
 
 @train_bp.route('/<int:model_id>/train', methods=['POST'])
 def api_start_train(model_id):
+    train_task = None
+    is_new_record = False  # 标记是否是新创建的记录
     try:
         # 获取训练参数
         data = request.get_json()
@@ -46,7 +48,6 @@ def api_start_train(model_id):
             return jsonify({'success': False, 'code': 0, 'msg': '训练已在进行中'}), 200
 
         # 立即保存数据集路径到数据库
-        train_task = None
         if record_id:
             train_task = TrainTask.query.get(record_id)
             if train_task:
@@ -64,6 +65,7 @@ def api_start_train(model_id):
                     'use_gpu': use_gpu
                 })
                 db.session.commit()
+                is_new_record = False  # 这是更新现有记录
 
         if not train_task:
             train_task = TrainTask(
@@ -83,6 +85,7 @@ def api_start_train(model_id):
             )
             db.session.add(train_task)
             db.session.commit()
+            is_new_record = True  # 这是新创建的记录
 
         # 重置训练状态
         train_status[model_id] = {
@@ -109,6 +112,22 @@ def api_start_train(model_id):
             'record_id': train_task.id  # 返回记录ID给前端
         }), 200
     except Exception as e:
+        # 如果创建了训练记录但在启动线程前失败，需要回滚或删除记录
+        if train_task:
+            try:
+                if is_new_record:
+                    # 如果是新创建的记录，删除它
+                    db.session.delete(train_task)
+                    db.session.commit()
+                else:
+                    # 如果是更新的记录，标记为错误状态
+                    train_task.status = 'error'
+                    train_task.error_log = f'启动训练失败: {str(e)}'
+                    db.session.commit()
+            except Exception as rollback_error:
+                print(f'回滚训练记录失败: {str(rollback_error)}')
+                db.session.rollback()
+        
         return jsonify({'success': False, 'code': 400, 'msg': f'启动训练失败: {str(e)}'}), 400
 
 
