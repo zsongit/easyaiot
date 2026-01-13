@@ -942,7 +942,33 @@ const startDetection = async () => {
     console.error('推理失败:', error);
     state.detectionStatus = 'failed';
     state.statusText = '推理失败';
-    createMessage.error(error.message || '推理执行失败，请重试');
+    
+    // 检查是否是模型不存在的错误
+    let errorMessage = '推理执行失败，请重试';
+    
+    // 检查 HTTP 状态码
+    if (error.response?.status === 400) {
+      errorMessage = '模型不存在';
+    }
+    // 检查响应数据中的 code 和 msg
+    else if (error.response?.data) {
+      const responseData = error.response.data;
+      if (responseData.code === 400 || (responseData.msg && (responseData.msg.includes('不存在') || responseData.msg.includes('模型')))) {
+        errorMessage = '模型不存在';
+      } else if (responseData.msg) {
+        errorMessage = responseData.msg;
+      }
+    }
+    // 检查错误消息中是否包含"不存在"或"模型"关键词
+    else if (error.message && (error.message.includes('不存在') || (error.message.includes('模型') && error.message.includes('400')))) {
+      errorMessage = '模型不存在';
+    }
+    // 使用默认错误消息
+    else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    createMessage.error(errorMessage);
   } finally {
     state.inferenceLoading = false;
   }

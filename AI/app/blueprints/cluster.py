@@ -257,7 +257,7 @@ def run_cluster_inference(model_id):
     
     model = Model.query.get(model_id)
     if not model:
-        return jsonify({'code': 404, 'msg': '模型不存在'}), 404
+        return jsonify({'code': 400, 'msg': '模型不存在'}), 400
     
     # 处理输入源：如果是直接上传文件，需要先上传到MinIO获取URL
     actual_input_source = input_source
