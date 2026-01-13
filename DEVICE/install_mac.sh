@@ -173,8 +173,48 @@ check_and_build_jars() {
     # 不再需要在宿主机上编译，所有编译都在Docker容器中完成
 }
 
+# 检查所有运行时镜像是否已存在
+check_images_exist() {
+    local images=(
+        "iot-gateway:latest"
+        "iot-module-system-biz:latest"
+        "iot-module-infra-biz:latest"
+        "iot-module-device-biz:latest"
+        "iot-module-dataset-biz:latest"
+        "iot-module-tdengine-biz:latest"
+        "iot-module-file-biz:latest"
+        "iot-module-message-biz:latest"
+        "iot-sink-biz:latest"
+        "iot-gb28181-biz:latest"
+    )
+    
+    local missing_count=0
+    
+    for image in "${images[@]}"; do
+        if ! docker image inspect "$image" > /dev/null 2>&1; then
+            missing_count=$((missing_count + 1))
+        fi
+    done
+    
+    if [ "$missing_count" -eq 0 ]; then
+        return 0  # 所有镜像都存在
+    else
+        return 1  # 有镜像缺失
+    fi
+}
+
 # 构建所有镜像
 build_images() {
+    print_info "========== 构建所有运行时镜像 =========="
+    
+    # 检查镜像是否已存在
+    if check_images_exist; then
+        print_success "所有运行时镜像已存在，跳过构建阶段"
+        print_success "========== 构建完成（跳过）=========="
+        echo
+        return 0
+    fi
+    
     print_info "开始构建所有Docker镜像（在容器中编译，显示完整日志）..."
     cd "$SCRIPT_DIR"
     # 注意：编译将在Docker容器中完成，不需要宿主机Maven环境
@@ -193,6 +233,8 @@ build_images() {
     fi
     
     print_success "镜像构建完成（所有编译在容器中完成）"
+    print_success "========== 构建完成 =========="
+    echo
 }
 
 # 构建并启动所有服务
@@ -440,6 +482,9 @@ DEVICE模块 Docker Compose 管理脚本 (macOS 版本)
     - iot-dataset
     - iot-tdengine
     - iot-file
+    - iot-message
+    - iot-sink
+    - iot-gb28181
 
 注意：
     - 此脚本需要 Docker Desktop for Mac

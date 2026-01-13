@@ -85,6 +85,7 @@ check_images_exist() {
         "iot-module-file-biz:latest"
         "iot-module-message-biz:latest"
         "iot-sink-biz:latest"
+        "iot-gb28181-biz:latest"
     )
     
     local missing_count=0
@@ -134,7 +135,8 @@ build_images() {
     docker build --target iot-tdengine -t iot-module-tdengine-biz:latest . && \
     docker build --target iot-file -t iot-module-file-biz:latest . && \
     docker build --target iot-message -t iot-module-message-biz:latest . && \
-    docker build --target iot-sink -t iot-sink-biz:latest .
+    docker build --target iot-sink -t iot-sink-biz:latest . && \
+    docker build --target iot-gb28181 -t iot-gb28181-biz:latest .
     exit_code=$?
     
     # 检查命令是否成功
@@ -171,7 +173,8 @@ build_images_force() {
     docker build --target iot-tdengine -t iot-module-tdengine-biz:latest . && \
     docker build --target iot-file -t iot-module-file-biz:latest . && \
     docker build --target iot-message -t iot-module-message-biz:latest . && \
-    docker build --target iot-sink -t iot-sink-biz:latest .
+    docker build --target iot-sink -t iot-sink-biz:latest . && \
+    docker build --target iot-gb28181 -t iot-gb28181-biz:latest .
     exit_code=$?
     
     # 检查命令是否成功
@@ -392,6 +395,7 @@ clean() {
             "iot-device"
             "iot-file"
             "iot-gateway"
+            "iot-gb28181"
             "iot-infra"
             "iot-message"
             "iot-sink"
@@ -465,7 +469,8 @@ update_services() {
     docker build --target iot-tdengine -t iot-module-tdengine-biz:latest . && \
     docker build --target iot-file -t iot-module-file-biz:latest . && \
     docker build --target iot-message -t iot-module-message-biz:latest . && \
-    docker build --target iot-sink -t iot-sink-biz:latest .
+    docker build --target iot-sink -t iot-sink-biz:latest . && \
+    docker build --target iot-gb28181 -t iot-gb28181-biz:latest .
     
     # 重启所有服务
     print_info "重启所有服务..."
@@ -541,6 +546,7 @@ DEVICE模块 Docker Compose 管理脚本
     - iot-file
     - iot-message
     - iot-sink
+    - iot-gb28181
 
 EOF
 }

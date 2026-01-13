@@ -181,3 +181,18 @@ EXPOSE 48099
 # 启动应用（使用exec形式）
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
 
+# ============ iot-gb28181 服务镜像 ============
+FROM runtime-base AS iot-gb28181
+COPY --from=builder /app/iot-gb28181/iot-gb28181-biz/target/iot-gb28181-biz.jar app.jar
+# 服务端口
+ENV SERVER_PORT=48088
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:${SERVER_PORT}/actuator/health || exit 1
+# 切换到非root用户
+USER appuser
+# 暴露端口
+EXPOSE 48088
+# 启动应用（使用exec形式）
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+
