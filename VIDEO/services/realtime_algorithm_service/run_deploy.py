@@ -234,6 +234,42 @@ def download_model_file(model_id: int, model_path: str) -> Optional[str]:
                 logger.info(f"开始从MinIO下载模型文件: bucket={bucket_name}, object={object_key}")
                 # TODO: 实现MinIO下载逻辑
                 # 这里可以调用AI模块的API或直接使用MinIO客户端
+                import requests
+                import os as os_module
+                ai_service_url = os_module.getenv('AI_SERVICE_URL', 'http://localhost:5000')
+                try:
+                    response = requests.post(
+                        f"{ai_service_url}/model/download_model_forVideo",
+                        headers={'X-Authorization': f'Bearer {os.getenv("JWT_TOKEN", "")}'},
+                        json={
+                            'bucket_name': bucket_name,
+                            'object_key': object_key,
+                            'destination_path': local_path
+                        },
+                        timeout=(5, 300)
+                    )
+                    if response.status_code == 200:
+                        result = response.json()
+                        if result.get('code') == 0:
+                            if os.path.exists(local_path):
+                                logger.debug(f'模型下载完成: {local_path}')
+                                return local_path
+                            else:
+                                logger.error(f"下载返回成功但文件不存在: {local_path}")
+                                return None
+                        else:
+                            logger.warning(f"模型下载失败: {result}")
+                            return None
+                    else:
+                        try:
+                            err = response.json()
+                            logger.warning(f"模型下载失败: {err}")
+                        except:
+                            logger.warning(f"模型下载失败: HTTP {response.status_code}, {response.text}")
+                        return None
+                except Exception as e:
+                    logger.warning(f"模型下载异常: {str(e)}")
+                    return None
                 # 暂时返回None，表示需要手动下载
                 logger.warning(f"MinIO下载功能待实现，请手动下载模型文件到: {local_path}")
                 return None
