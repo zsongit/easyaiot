@@ -854,3 +854,36 @@ def get_model(model_id):
             'code': 500,
             'msg': f'服务器内部错误: {str(e)}'
         }), 500
+
+# 在模型推理时进行模型下载
+@model_bp.route('/download_model_forVideo', methods=['POST'])
+def download_model_forVideo():
+    try:
+        data = request.get_json()
+        bucket_name = data.get('bucket_name')
+        object_key = data.get('object_key')
+        destination_path = data.get('destination_path')
+        # ① 参数校验（逻辑修正）
+        if not bucket_name or not object_key or not destination_path:
+            logger.warning("缺少必要参数")
+            return jsonify({
+                'code': 400,
+                'msg': '请传递必要的参数'
+            }), 400
+        # ② 执行下载
+        success, error_msg = ModelService.download_from_minio(
+            bucket_name, object_key, destination_path
+        )
+        if not success:
+            raise Exception(f"从MinIO下载文件失败: {bucket_name}/{object_key}. {error_msg or ''}")
+        # ③ 正确返回成功状态
+        return jsonify({
+            'code': 0,
+            'msg': f'模型下载成功，请在 {destination_path} 查看'
+        }), 200
+    except Exception as e:
+        logger.error(f"在模型推理时进行模型下载失败: {str(e)}", exc_info=True)
+        return jsonify({
+            'code': 500,
+            'msg': f'服务器内部错误: {str(e)}'
+        }), 500
